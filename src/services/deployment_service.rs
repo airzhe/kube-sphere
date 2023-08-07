@@ -1,13 +1,16 @@
 use crate::{Error, Result};
 use anyhow::anyhow;
+use base64;
 use handlebars::Handlebars;
 use k8s_openapi::api::apps::v1::Deployment;
-use k8s_openapi::api::core::v1::{ConfigMap, Service};
+use k8s_openapi::api::core::v1::{ConfigMap, Secret, Service};
+use k8s_openapi::ByteString;
 use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
 use kube::{api::Api, Client};
 use log::*;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(RustEmbed)]
@@ -19,8 +22,6 @@ struct ProcessResult {
     success: Vec<String>,
     failure: Vec<String>,
 }
-
-
 
 pub(crate) async fn create_deployment(
     client: Arc<Client>,
@@ -144,6 +145,19 @@ async fn process_resource(
             match api.create(&pp, &config_map).await {
                 Ok(resource) => Ok(format!(
                     "Created ConfigMap: {}",
+                    resource.metadata.name.unwrap()
+                )),
+                Err(e) => Err(e.into()),
+            }
+        }
+        "Secret" => {
+            let api: Api<Secret> = Api::namespaced(client.clone(), namespace);
+            let config_map = serde_yaml::from_value::<Secret>(doc.clone())
+                .map_err(|e| Error::General(e.into()))?;
+            let pp = PostParams::default();
+            match api.create(&pp, &config_map).await {
+                Ok(resource) => Ok(format!(
+                    "Created Secret: {}",
                     resource.metadata.name.unwrap()
                 )),
                 Err(e) => Err(e.into()),

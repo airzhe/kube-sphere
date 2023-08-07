@@ -105,11 +105,11 @@ async fn main() -> Result<()> {
 
     // 创建一个 Deployment
     let post_params: serde_json::Value = serde_json::json!({
-        "releaseName": "popmart",
+        "releaseName": "popmart-nginx",
         "serviceName": "nginx",
         "containerImage": "nginx",
         "containerTag": "latest",
-        "replicas": 2,
+        "replicas": 1,
         "pullPolicy": "IfNotPresent",
         "containerPort": 80,
     });

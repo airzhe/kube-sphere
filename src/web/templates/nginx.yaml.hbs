@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{releaseName}}-{{serviceName}}
+  name: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
   labels:
     app.kubernetes.io/name: {{serviceName}}
-    app.kubernetes.io/instance: {{releaseName}}-{{serviceName}}
+    app.kubernetes.io/instance: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
 spec:
   replicas: {{replicas}}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{serviceName}}
-      app.kubernetes.io/instance: {{releaseName}}-{{serviceName}}
+      app.kubernetes.io/instance: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
   template:
     metadata:
       labels:
         app.kubernetes.io/name: {{serviceName}}
-        app.kubernetes.io/instance: {{releaseName}}-{{serviceName}}
+        app.kubernetes.io/instance: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
     spec:
       serviceAccountName: default
       containers:
@@ -35,14 +35,13 @@ spec:
               path: /
               port: http
 ---
-# Source: nginx/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{releaseName}}-{{serviceName}}
+  name: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
   labels:
     app.kubernetes.io/name: {{serviceName}}
-    app.kubernetes.io/instance: {{releaseName}}-{{serviceName}}
+    app.kubernetes.io/instance: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
 spec:
   type: ClusterIP
   ports:
@@ -52,4 +51,4 @@ spec:
       name: http
   selector:
     app.kubernetes.io/name: {{serviceName}}
-    app.kubernetes.io/instance: {{releaseName}}-{{serviceName}}
+    app.kubernetes.io/instance: {{#if releaseName}}{{releaseName}}{{else}}{{serviceName}}{{/if}}
