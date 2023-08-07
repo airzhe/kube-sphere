@@ -1,16 +1,13 @@
 use crate::{Error, Result};
 use anyhow::anyhow;
-use base64;
 use handlebars::Handlebars;
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{ConfigMap, Secret, Service};
-use k8s_openapi::ByteString;
 use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
 use kube::{api::Api, Client};
 use log::*;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(RustEmbed)]

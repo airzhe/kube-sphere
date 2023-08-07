@@ -2,6 +2,7 @@ use crate::models::pod;
 use crate::{Error, Result};
 use futures::StreamExt;
 use k8s_openapi::api::core::v1::Pod;
+use kube::api::DeleteParams;
 use kube::{
     api::{AttachParams, AttachedProcess, ListParams, LogParams},
     Api, Client,
@@ -101,4 +102,16 @@ pub(crate) async fn find_pod_by_labels(
 
     let result = json!(pods_json);
     Ok(result.to_string())
+}
+
+pub(crate) async fn del_pod(
+    client: Arc<Client>,
+    namespace: &str,
+    pod_name: &str,
+) -> Result<String> {
+    let pod_api: Api<Pod> = Api::namespaced(client.as_ref().clone(), &namespace);
+    let delete_params = DeleteParams::default();
+    let delete_result = pod_api.delete(pod_name, &delete_params).await?;
+    // delete_params
+    Ok(format!("Pod delete result: {:?}", delete_result))
 }

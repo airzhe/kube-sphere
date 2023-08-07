@@ -17,13 +17,13 @@ struct QueryParams {
 
 pub fn routes(client: Arc<Client>) -> Router {
     Router::new()
-        .route("/namespaces/:namespace/pods/:pod_name", get(pod_info))
+        .route(
+            "/namespaces/:namespace/pods/:pod_name",
+            get(pod_info).delete(del_pod),
+        )
         .route("/namespaces/:namespace/pods/:pod_name/exec", post(execute))
         .route("/namespaces/:namespace/pods/:pod_name/logs", get(pod_logs))
-        .route(
-            "/namespaces/:namespace/pods",
-            get(find_pod_by_labels),
-        )
+        .route("/namespaces/:namespace/pods", get(find_pod_by_labels))
         .with_state(client)
 }
 
@@ -32,6 +32,13 @@ async fn pod_info(
     Path((namespace, pod_name)): Path<(String, String)>,
 ) -> Result<String> {
     pod_service::pod_info(client, &namespace, &pod_name).await
+}
+
+async fn del_pod(
+    State(client): State<Arc<Client>>,
+    Path((namespace, pod_name)): Path<(String, String)>,
+) -> Result<String> {
+    pod_service::del_pod(client, &namespace, &pod_name).await
 }
 
 async fn pod_logs(
@@ -52,7 +59,7 @@ async fn execute(
 async fn find_pod_by_labels(
     State(client): State<Arc<Client>>,
     Path(namespace): Path<String>,
-    Query(query_params): Query<QueryParams>
+    Query(query_params): Query<QueryParams>,
 ) -> Result<String> {
     let labels = query_params.labels.unwrap_or_default();
     pod_service::find_pod_by_labels(client, &namespace, &labels).await

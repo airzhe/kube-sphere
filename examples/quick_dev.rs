@@ -84,6 +84,14 @@ async fn main() -> Result<()> {
         .print()
         .await?;
 
+    /*
+    // 删除指定Pod实现重启
+    hc.do_delete("/api/v1/namespaces/beta-popcloud/pods/alpine-7b74d7c9-9bzh6")
+        .await?
+        .print()
+        .await?;
+     */
+
     // 获取指定命名空间下的指定 Pod 的日志
     hc.do_get("/api/v1/namespaces/beta-popcloud/pods/popmart-nginx-7bb6cc5487-qz87f/logs")
         .await?
