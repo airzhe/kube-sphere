@@ -1,13 +1,16 @@
 use crate::{Error, Result};
 use anyhow::anyhow;
+use axum::body::Bytes;
 use handlebars::Handlebars;
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{ConfigMap, Secret, Service};
+use k8s_openapi::api::networking::v1::Ingress;
 use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
 use kube::{api::Api, Client};
 use log::*;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
+
 use std::sync::Arc;
 
 #[derive(RustEmbed)]
@@ -18,6 +21,23 @@ struct TemplateDirectory;
 struct ProcessResult {
     success: Vec<String>,
     failure: Vec<String>,
+}
+
+pub(crate) async fn create_deployment_by_yaml(
+    client: Arc<Client>,
+    namespace: &str,
+    body: &Bytes,
+) -> Result<String> {
+    //把doc放到map里，然后再便利map执行创建资源操作试试
+    let mut container: Vec<serde_yaml::Value> = Vec::new();
+    for document in serde_yaml::Deserializer::from_slice(&body) {
+        let doc = serde_yaml::Value::deserialize(document).map_err(|e| Error::General(e.into()))?;
+        container.push(doc);
+    }
+    info!("Container length: {}", container.len());
+    let result = process_resources(container, namespace, client).await?;
+    let json_result = serde_json::to_string(&result).map_err(|e| Error::General(e.into()))?;
+    Ok(json_result)
 }
 
 pub(crate) async fn create_deployment(
@@ -40,21 +60,26 @@ pub(crate) async fn create_deployment(
         .render(service_name, &data)
         .map_err(|e| Error::General(e.into()))?;
     info!("{}", rendered);
-
-    let mut success_results = Vec::new();
-    let mut failure_results = Vec::new();
-
     //把doc放到map里，然后再便利map执行创建资源操作试试
     let mut container: Vec<serde_yaml::Value> = Vec::new();
-
     for document in serde_yaml::Deserializer::from_str(&rendered) {
         let doc = serde_yaml::Value::deserialize(document).map_err(|e| Error::General(e.into()))?;
         container.push(doc);
     }
-
     info!("Container length: {}", container.len());
+    let result = process_resources(container, namespace, client).await?;
+    let json_result = serde_json::to_string(&result).map_err(|e| Error::General(e.into()))?;
+    Ok(json_result)
+}
+
+async fn process_resources(
+    container: Vec<serde_yaml::Value>,
+    namespace: &str,
+    client: Arc<Client>,
+) -> Result<ProcessResult> {
+    let mut success_results = Vec::new();
+    let mut failure_results = Vec::new();
     for doc in container {
-        // 处理每个doc
         if !doc.is_null() {
             match process_resource(&doc, namespace, client.as_ref()).await {
                 Ok(msg) => {
@@ -66,15 +91,11 @@ pub(crate) async fn create_deployment(
             }
         }
     }
-
     let result = ProcessResult {
         success: success_results,
         failure: failure_results,
     };
-
-    let json_result = serde_json::to_string(&result).map_err(|e| Error::General(e.into()))?;
-
-    Ok(json_result)
+    Ok(result)
 }
 
 async fn process_resource(
@@ -155,6 +176,19 @@ async fn process_resource(
             match api.create(&pp, &config_map).await {
                 Ok(resource) => Ok(format!(
                     "Created Secret: {}",
+                    resource.metadata.name.unwrap()
+                )),
+                Err(e) => Err(e.into()),
+            }
+        }
+        "Ingress" => {
+            let api: Api<Ingress> = Api::namespaced(client.clone(), namespace);
+            let ingress = serde_yaml::from_value::<Ingress>(doc.clone())
+                .map_err(|e| Error::General(e.into()))?;
+            let pp = PostParams::default();
+            match api.create(&pp, &ingress).await {
+                Ok(resource) => Ok(format!(
+                    "Created Ingress: {}",
                     resource.metadata.name.unwrap()
                 )),
                 Err(e) => Err(e.into()),

@@ -5,6 +5,7 @@ pub mod deployments;
 pub mod pods;
 pub mod namespaces;
 pub mod configmaps;
+pub mod ingress;
 
 pub(crate) async fn my_middleware<B>(
     State(_client): State<Arc<Client>>,

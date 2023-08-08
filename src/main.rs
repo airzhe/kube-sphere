@@ -22,7 +22,8 @@ async fn main() -> Result<()> {
         .merge(web::namespaces::routes(client.clone()))
         .merge(web::pods::routes(client.clone()))
         .merge(web::deployments::routes(client.clone()))
-        .merge(web::configmaps::routes(client.clone()));
+        .merge(web::configmaps::routes(client.clone()))
+        .merge(web::ingress::routes(client.clone()));
 
     let app = Router::new();
     let routes_all = Router::new()
