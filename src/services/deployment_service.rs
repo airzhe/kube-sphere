@@ -2,7 +2,7 @@ use crate::{Error, Result};
 use anyhow::anyhow;
 use axum::body::Bytes;
 use handlebars::Handlebars;
-use k8s_openapi::api::apps::v1::Deployment;
+use k8s_openapi::api::apps::v1::{Deployment, StatefulSet};
 use k8s_openapi::api::core::v1::{ConfigMap, Secret, Service};
 use k8s_openapi::api::networking::v1::Ingress;
 use kube::api::{DeleteParams, Patch, PatchParams, PostParams};
@@ -109,10 +109,10 @@ async fn process_resource(
     match resource_type {
         "Deployment" => {
             let api: Api<Deployment> = Api::namespaced(client.clone(), namespace);
-            let deployment = serde_yaml::from_value::<Deployment>(doc.clone())
+            let data = serde_yaml::from_value::<Deployment>(doc.clone())
                 .map_err(|e| Error::General(e.into()))?;
             let pp = PostParams::default();
-            match api.create(&pp, &deployment).await {
+            match api.create(&pp, &data).await {
                 Ok(resource) => Ok(format!(
                     "Created Deployment: {}",
                     resource.metadata.name.unwrap()
@@ -122,7 +122,31 @@ async fn process_resource(
                         Err(Error::ResourceAlreadyExists(anyhow!(
                             "Resource {} {} already exists",
                             resource_type,
-                            deployment.metadata.name.unwrap()
+                            data.metadata.name.unwrap()
+                        )))
+                    } else {
+                        Err(Error::General(anyhow::Error::new(ae)))
+                    }
+                }
+                Err(e) => Err(e.into()),
+            }
+        }
+        "StatefulSet" => {
+            let api: Api<StatefulSet> = Api::namespaced(client.clone(), namespace);
+            let data: StatefulSet = serde_yaml::from_value::<StatefulSet>(doc.clone())
+                .map_err(|e| Error::General(e.into()))?;
+            let pp = PostParams::default();
+            match api.create(&pp, &data).await {
+                Ok(resource) => Ok(format!(
+                    "Created StatefulSet: {}",
+                    resource.metadata.name.unwrap()
+                )),
+                Err(kube::Error::Api(ae)) => {
+                    if ae.code == 409 {
+                        Err(Error::ResourceAlreadyExists(anyhow!(
+                            "Resource {} {} already exists",
+                            resource_type,
+                            data.metadata.name.unwrap()
                         )))
                     } else {
                         Err(Error::General(anyhow::Error::new(ae)))
@@ -133,10 +157,10 @@ async fn process_resource(
         }
         "Service" => {
             let api: Api<Service> = Api::namespaced(client.clone(), namespace);
-            let service: Service = serde_yaml::from_value::<Service>(doc.clone())
+            let data: Service = serde_yaml::from_value::<Service>(doc.clone())
                 .map_err(|e| Error::General(e.into()))?;
             let pp = PostParams::default();
-            match api.create(&pp, &service).await {
+            match api.create(&pp, &data).await {
                 Ok(resource) => Ok(format!(
                     "Created Service: {}",
                     resource.metadata.name.unwrap()
@@ -146,7 +170,7 @@ async fn process_resource(
                         Err(Error::ResourceAlreadyExists(anyhow!(
                             "Resource {} {} already exists",
                             resource_type,
-                            service.metadata.name.unwrap()
+                            data.metadata.name.unwrap()
                         )))
                     } else {
                         Err(Error::General(anyhow::Error::new(ae)))
@@ -157,10 +181,10 @@ async fn process_resource(
         }
         "ConfigMap" => {
             let api: Api<ConfigMap> = Api::namespaced(client.clone(), namespace);
-            let config_map = serde_yaml::from_value::<ConfigMap>(doc.clone())
+            let data = serde_yaml::from_value::<ConfigMap>(doc.clone())
                 .map_err(|e| Error::General(e.into()))?;
             let pp = PostParams::default();
-            match api.create(&pp, &config_map).await {
+            match api.create(&pp, &data).await {
                 Ok(resource) => Ok(format!(
                     "Created ConfigMap: {}",
                     resource.metadata.name.unwrap()
@@ -170,10 +194,10 @@ async fn process_resource(
         }
         "Secret" => {
             let api: Api<Secret> = Api::namespaced(client.clone(), namespace);
-            let config_map = serde_yaml::from_value::<Secret>(doc.clone())
+            let data = serde_yaml::from_value::<Secret>(doc.clone())
                 .map_err(|e| Error::General(e.into()))?;
             let pp = PostParams::default();
-            match api.create(&pp, &config_map).await {
+            match api.create(&pp, &data).await {
                 Ok(resource) => Ok(format!(
                     "Created Secret: {}",
                     resource.metadata.name.unwrap()
@@ -183,10 +207,10 @@ async fn process_resource(
         }
         "Ingress" => {
             let api: Api<Ingress> = Api::namespaced(client.clone(), namespace);
-            let ingress = serde_yaml::from_value::<Ingress>(doc.clone())
+            let data = serde_yaml::from_value::<Ingress>(doc.clone())
                 .map_err(|e| Error::General(e.into()))?;
             let pp = PostParams::default();
-            match api.create(&pp, &ingress).await {
+            match api.create(&pp, &data).await {
                 Ok(resource) => Ok(format!(
                     "Created Ingress: {}",
                     resource.metadata.name.unwrap()
